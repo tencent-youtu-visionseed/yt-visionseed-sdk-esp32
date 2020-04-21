@@ -2,15 +2,8 @@
 
 #include "YtVisionSeed.h"
 
-YtMessenger* YtVisionSeed::messenger = NULL;
-pb_byte_t* YtVisionSeed::mBuffer = NULL;
-
 YtVisionSeed::YtVisionSeed(const char* dev)
 {
-    if ( messenger ) {
-        delete(messenger);
-        messenger = NULL;
-    }
     messenger = new YtMessenger(dev);
     // REGISTER_CALLBACK(sendBlob);
     messenger->startLoop();
@@ -289,7 +282,6 @@ std::vector<FaceIdInfo> YtVisionSeed::ListFaceId()
     // TODO: for dynamic (nano) version of proto, it requires pb_callback_t interface
     LOG_E("[ListFaceId] Not implemented!\n");
 #endif
-
     return faces;
 }
 
@@ -355,11 +347,11 @@ YtRpcResponse_ReturnCode YtVisionSeed::GetTracePic(int32_t traceId, std::string 
     return getErrorCode(response);
 }
 
-void YtVisionSeed::RegisterOnStatus(OnResult callback)
+void YtVisionSeed::RegisterOnStatus(OnResultCallback callback)
 {
     messenger->RegisterOnStatus(callback);
 }
-void YtVisionSeed::RegisterOnFaceResult(OnResult callback)
+void YtVisionSeed::RegisterOnResult(OnResultCallback callback)
 {
-    messenger->RegisterOnFaceResult(callback);
+    messenger->RegisterOnResult(callback);
 }

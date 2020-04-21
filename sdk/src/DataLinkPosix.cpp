@@ -23,11 +23,11 @@
 #if defined(ESP32)
 	#include "DataLinkESP32.h"
 #elif defined(STM32)
-	#include "DataLinkSTM32HAL.h"
-    extern "C" int usleep(useconds_t ms)
+    #include "DataLinkSTM32HAL.h"
+    extern "C" int usleep(useconds_t us)
     {
-    	vTaskDelay(ms / portTICK_PERIOD_MS);
-    	return 0;
+        vTaskDelay(us /1000 / portTICK_PERIOD_MS);
+        return 0;
     }
 #endif
 
@@ -70,7 +70,7 @@ void YtDataLinkPullPosix::DetachAll(IObserver *p)
 {
     for (size_t i = 0; i < mInstance.size(); i++)
     {
-        mInstance[i]->Attach(p);
+        mInstance[i]->Detach(p);
     }
 }
 YtDataLinkPullPosix::YtDataLinkPullPosix(const char *dev) : YtSubject(), YtThread("YtDataLinkPull"), YtDataLink(NULL)
@@ -253,7 +253,17 @@ void YtThread::start()
 #endif
 
 #ifdef INC_FREERTOS_H
-    xTaskCreate((TaskFunction_t)threadFunc, mName.c_str(), 4096, this, 5, &thread);
+#ifdef STM32
+    if (xTaskCreate((TaskFunction_t)threadFunc, mName.c_str(), 512, this, 5, &thread) != pdPASS)
+    {
+        LOG_E("create task %s failed.\n", mName.c_str());
+        return;
+    }
+#else
+    // ESP32平台，如果不绑定CPU核心，会发生奇怪的内存泄露（shared_ptr构析函数有概率不被执行，导致YtMsgPool不断增长）
+    xTaskCreatePinnedToCore((TaskFunction_t)threadFunc, mName.c_str(), 4096, this, 5, &thread, 1);
+    // xTaskCreate((TaskFunction_t)threadFunc, mName.c_str(), 4096, this, 5, &thread);
+#endif
 #else
     ret = pthread_attr_setschedpolicy (&attr, SCHED_RR);
     if (0 != ret)

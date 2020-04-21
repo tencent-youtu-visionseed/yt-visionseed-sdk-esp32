@@ -4,7 +4,7 @@
     // Linux
     #define PB_FIELD_32BIT 1
 #elif defined(YTMSG_LITE)
-    // FreeRTOS, ESP32
+    // FreeRTOS, ESP32, STM32
     #define PB_FIELD_32BIT 1
 #else
     // Arduino AVR

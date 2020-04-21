@@ -15,7 +15,7 @@ template class SimplePool<YtMsg>;
 
 #ifdef __rtems__
 #include "cv.h"
-template class SimplePool<BGRHwImageExt>;
+template class SimplePool<HwImageExt>;
 #endif
 
 template <class T>
@@ -56,7 +56,17 @@ void SimplePool<T>::zero(T *p)
 template <class T>
 int SimplePool<T>::getTotal()
 {
-    return mUsing.size();
+    int ret = 0;
+    sem_wait(&mSem);
+    for (size_t i = 0; i < mUsing.size(); i++)
+    {
+        if (mUsing[i])
+        {
+            ret ++;
+        }
+    }
+    sem_post(&mSem);
+    return ret;
 }
 
 template <class T>

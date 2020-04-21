@@ -3,7 +3,6 @@
 #define YT_DATALINK_H
 
 #include "YtMsg.pb.h"
-
 #include "YtLog.h"
 
 #if defined(YTMSG_FULL)
@@ -23,7 +22,11 @@
     #define ACCESS_CONST(x) (x)
 
     #define YTMSG_USE_RECV_POOL true
+#if defined(STM32)
+    #define MAX_BLOB_BUF 1024
+#else
     #define MAX_BLOB_BUF 10240
+#endif
     //TODO: nanopb的YtMsg_size有bug：存在oneof修饰时，用了sizeof(union{})来计算，编译器不支持
     #undef YtMsg_size
     #define YtMsg_size (MAX_BLOB_BUF + sizeof(YtMsg))
@@ -36,7 +39,7 @@
     #define ACCESS_CONST(x) pgm_read_word(&x)
 
     #undef YTMSG_USE_RECV_POOL
-    #define YtMsg_size 200
+    #define YtMsg_size 600
     #define YTDATALINK_RECV_BUF_SIZE 8
     #define YTDATALINK_SEND_BUF_SIZE 8
 #endif
@@ -61,7 +64,20 @@
 // RPC Result
 #define VSRESULT_DATA_TAG(x)      YtResult_##x##_tag
 #define VSRESULT_DATA(vs_result) (vs_result)->values.result.data
+#if defined(YTMSG_FULL)
+    #define VSRESULT_DATAV2(vs_result) ((pb_bytes_array_t*)&((vs_result)->values.result.dataV2))
+#else
+    #define VSRESULT_DATAV2(vs_result) ((pb_bytes_array_t*)((vs_result)->values.result.dataV2))
+#endif
+#define VSRESULT_DATAV2_SIZE(vs_result) sizeof((vs_result)->values.result.dataV2.bytes)
 #define VSRESULT(vs_result) (vs_result)->values.result
+
+#define VS_MODEL_FACE_DETECTION 1
+#define VS_MODEL_FACE_LANDMARK 2
+#define VS_MODEL_FACE_POSE 3
+#define VS_MODEL_FACE_QUALITY 4
+#define VS_MODEL_FACE_RECOGNITION 6
+#define VS_MODEL_DETECTION_TRACE 8
 
 typedef enum
 {
@@ -75,6 +91,49 @@ typedef enum
     YT_DL_CRC_H,
     YT_DL_CRC_L,
 } YtDataLinkStatus;
+
+typedef enum
+{
+    YT_RESULT_RECT = 0,
+    YT_RESULT_ARRAY,
+    YT_RESULT_CLASSIFICATION,
+    YT_RESULT_STRING,
+    YT_RESULT_POINTS,
+    YT_RESULT_VARUINT32,
+} YtVisionSeedResultType;
+typedef struct
+{
+    float conf;
+    uint16_t cls;
+    int16_t x;
+    int16_t y;
+    int16_t w;
+    int16_t h;
+} YtVisionSeedResultTypeRect;
+typedef struct
+{
+    float conf;
+    uint16_t cls;
+} YtVisionSeedResultTypeClassification;
+typedef struct
+{
+    uint8_t count;
+    const float *p;
+} YtVisionSeedResultTypeArray;
+typedef struct
+{
+    float conf;
+    const char *p;
+} YtVisionSeedResultTypeString;
+typedef struct
+{
+    struct Point {
+        int16_t x;
+        int16_t y;
+    };
+    uint8_t count;
+    Point *p;
+} YtVisionSeedResultTypePoints;
 
 class YtSerialPortBase
 {
@@ -100,12 +159,30 @@ public:
 #ifdef YTMSG_USE_RECV_POOL
     std::shared_ptr<YtMsg> recvRunOnce();
 #else
-    YtMsg *recvRunOnce(); //you are responsable to delete YtMsg which newed from 'virtual YtMsg *alloc()'
+    const uint8_t *recvRunOnce(); // don't free the return pointer!
 #endif
 
 #if defined(YTMSG_FULL) || defined(YTMSG_LITE)
     void sendYtMsg(YtMsg *message);
 #endif
+
+    // 结果包解析
+    static const uint8_t* getResult(const uint8_t *buf, uint32_t &ret_len, const uint8_t path[], const uint8_t path_len);
+    static bool getResult(const uint8_t *buf, YtVisionSeedResultTypeRect *result, const uint8_t path[], const uint8_t path_len);
+    static bool getResult(const uint8_t *buf, YtVisionSeedResultTypeClassification *result, const uint8_t path[], const uint8_t path_len);
+    static bool getResult(const uint8_t *buf, YtVisionSeedResultTypeArray *result, const uint8_t path[], const uint8_t path_len);
+    static bool getResult(const uint8_t *buf, uint32_t *result, const uint8_t path[], const uint8_t path_len);
+    static bool getResult(const uint8_t *buf, YtVisionSeedResultTypeString *result, const uint8_t path[], const uint8_t path_len);
+    static bool getResult(const uint8_t *buf, YtVisionSeedResultTypePoints *result, const uint8_t path[], const uint8_t path_len);
+    static void addResultRaw(pb_bytes_array_t *data, uint32_t size, const uint8_t path[], const uint8_t path_len, YtVisionSeedResultType _type, const uint8_t *content, const uint32_t len);
+    static void addResult(pb_bytes_array_t *data, uint32_t size, const uint8_t path[], const uint8_t path_len, const YtVisionSeedResultTypeRect &result);
+    static void addResult(pb_bytes_array_t *data, uint32_t size, const uint8_t path[], const uint8_t path_len, const YtVisionSeedResultTypeClassification &result);
+    static void addResult(pb_bytes_array_t *data, uint32_t size, const uint8_t path[], const uint8_t path_len, const YtVisionSeedResultTypeArray &result);
+    static void addResult(pb_bytes_array_t *data, uint32_t size, const uint8_t path[], const uint8_t path_len, const YtVisionSeedResultTypeString &result);
+    static void addResult(pb_bytes_array_t *data, uint32_t size, const uint8_t path[], const uint8_t path_len, const YtVisionSeedResultTypePoints &result);
+    static void addResult(pb_bytes_array_t *data, uint32_t size, const uint8_t path[], const uint8_t path_len, const uint32_t result);
+    static void initDataV2(YtMsg *message);
+    const uint8_t *getPbField(int tag, uint32_t *len);
 
 protected:
     YtSerialPortBase *mPort; //YtDataLink responsable to delete it;

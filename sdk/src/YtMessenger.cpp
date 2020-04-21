@@ -4,7 +4,7 @@
 
 #define DEVICE_STATUS_BUSY      0x01
 
-YtMessenger::YtMessenger(const char* dev) : IObserver(), YtThread("YtMessenger"), mFaceResultCallback(NULL), mStatusCallback(NULL)
+YtMessenger::YtMessenger(const char* dev) : IObserver(), YtThread("YtMessenger"), mNGResultCallback(NULL), mStatusCallback(NULL)
 {
     int instanceId = YtDataLinkPullPosix::createInstance(dev);
     YtDataLinkPushPosix::createInstance(YtDataLinkPullPosix::getInstance(instanceId));
@@ -39,16 +39,6 @@ YtMessenger::YtMessenger(const char* dev) : IObserver(), YtThread("YtMessenger")
 YtMessenger::~YtMessenger()
 {
     YtDataLinkPullPosix::DetachAll(this);
-
-    if ( push != NULL ) {
-        push->exit();
-        delete push;
-    }
-
-    if ( pull != NULL ) {
-        pull->exit();
-        delete pull;
-    }
 
     LOG_D("[YtMessenger] released.\n");
 }
@@ -92,13 +82,15 @@ void *YtMessenger::run()
                         mStatusCallback(mMsg);
                     }
                     break;
-
-                case YtResult_faceDetectionResult_tag:
-                    if (mFaceResultCallback != NULL)
-                    {
-                        mFaceResultCallback(mMsg);
-                    }
-                    break;
+            }
+            if (VSRESULT_DATAV2(mMsg) != NULL &&
+                VSRESULT_DATAV2(mMsg)->size > 0 &&
+                mMsg->values.result.which_data != YtResult_faceDetectionResult_tag)
+            {
+                if (mNGResultCallback != NULL)
+                {
+                    mNGResultCallback(mMsg);
+                }
             }
             // DispatchMsg(mMsg);
             mMsg = NULL;
@@ -347,11 +339,11 @@ bool YtMessenger::SendFile(std::string pathHost, std::string path, std::string a
     return false;
 }
 
-void YtMessenger::RegisterOnStatus(OnResult callback)
+void YtMessenger::RegisterOnStatus(OnResultCallback callback)
 {
     mStatusCallback = callback;
 }
-void YtMessenger::RegisterOnFaceResult(OnResult callback)
+void YtMessenger::RegisterOnResult(OnResultCallback callback)
 {
-    mFaceResultCallback = callback;
+    mNGResultCallback = callback;
 }

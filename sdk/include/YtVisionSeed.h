@@ -60,8 +60,8 @@ public:
     // *       AI
     // */
     // bool SetFaceAIAbility(int32_t ability);
-    void RegisterOnStatus(OnResult callback);
-    void RegisterOnFaceResult(OnResult callback);
+    void RegisterOnStatus(OnResultCallback callback);
+    void RegisterOnResult(OnResultCallback callback);
 
     // /*
     // *
@@ -81,8 +81,7 @@ public:
     YtRpcResponse_ReturnCode GetTracePic(int32_t traceId, std::string path);
 
 private:
-    static YtMessenger *messenger;
-    static pb_byte_t* mBuffer;
+    YtMessenger *messenger;
 
     bool SetCameraExposureParams(CameraID camId, CameraExposureParams_ExposureType type, int32_t timeUs, int32_t gain);
 };

@@ -66,46 +66,71 @@ void OnStatus(shared_ptr<YtMsg> message)
     }
 }
 //获取识别结果
-void OnFaceRetrieveResult(shared_ptr<YtMsg> message)
+void OnResult(shared_ptr<YtMsg> message)
 {
-    // printf("frame: %" PRIu64 ", frameTimestampUs: %" PRIu64 "\n", VSRESULT(message).frameId, VSRESULT(message).frameTimestampUs);
     uint64_t ts = _time();
-    for (size_t i = 0; i < VSRESULT_DATA(message).faceDetectionResult.face_count; i++)
+    uint8_t vs_path[3] = {VS_MODEL_FACE_DETECTION};
+    uint32_t count = 0;
+    YtDataLink::getResult(VSRESULT_DATAV2(message)->bytes, &count, vs_path, 1);
+    // printf("frame: %" PRIu64 ", size: %d, count: %d, free: %d\n", VSRESULT(message).frameId, VSRESULT_DATAV2(message)->size, count, esp_get_free_heap_size());
+    for (int i = 0; i < count; i ++)
     {
-        Face &face = VSRESULT_DATA(message).faceDetectionResult.face[i];
-        if (!face.has_traceId)
-        {
-            LOG_E("you're running old firmware!\n");
-            return;
-        }
+        YtVisionSeedResultTypeRect rect;
+        YtVisionSeedResultTypeString faceName;
+        YtVisionSeedResultTypeArray quality;
+        uint32_t trace_id;
 
-        if (records.find(face.traceId) == records.end())
+        vs_path[1] = i;
+        if (!YtDataLink::getResult(VSRESULT_DATAV2(message)->bytes, &rect, vs_path, 2))
         {
-            records[face.traceId] = {face.traceId, face.name, ts, ts, face.quality, false, YtRpcResponse_ReturnCode_SUCC};
-            if (face.has_name)
+            continue;
+        }
+        vs_path[2] = VS_MODEL_FACE_RECOGNITION;
+        if (!YtDataLink::getResult(VSRESULT_DATAV2(message)->bytes, &faceName, vs_path, 3))
+        {
+            continue;
+        }
+        vs_path[2] = VS_MODEL_DETECTION_TRACE;
+        if (!YtDataLink::getResult(VSRESULT_DATAV2(message)->bytes, &trace_id, vs_path, 3))
+        {
+            continue;
+        }
+        vs_path[2] = VS_MODEL_FACE_QUALITY;
+        if (!YtDataLink::getResult(VSRESULT_DATAV2(message)->bytes, &quality, vs_path, 3))
+        {
+            continue;
+        }
+        // printf("--------------\n");
+        // printf("[traceId] %d\n", trace_id);
+        // printf("[faceName] %s conf: %6.3f\n", faceName.p, faceName.conf);
+        // printf("[rect] (%d, %d, %d, %d) cls: %d conf: %6.3f\n", rect.x, rect.y, rect.w, rect.h, rect.cls, rect.conf);
+        if (records.find(trace_id) == records.end())
+        {
+            records[trace_id] = {trace_id, faceName.p, ts, ts, quality.p[0], false, YtRpcResponse_ReturnCode_SUCC};
+            if (strlen(faceName.p) > 0)
             {
                 //进入
-                printf("[%s%11s"COLOR_NO"] [%d] '%s' (q:%6.3f, c:%6.3f)\n", COLOR_CYAN, "enter", face.traceId, face.name, face.quality, face.nameConfidence);
+                printf("[%s%11s"COLOR_NO"] [%d] '%s' (q:%6.3f, c:%6.3f)\n", COLOR_CYAN, "enter", trace_id, faceName.p, quality.p[0], faceName.conf);
             }
             else
             {
                 //未识别出
-                printf("[%s%11s"COLOR_NO"] [%d] '%s' (q:%6.3f, c:%6.3f)\n", COLOR_CYAN_LIGHT, "new", face.traceId, face.name, face.quality, face.nameConfidence);
+                printf("[%s%11s"COLOR_NO"] [%d] '%s' (q:%6.3f, c:%6.3f)\n", COLOR_CYAN_LIGHT, "new", trace_id, faceName.p, quality.p[0], faceName.conf);
             }
         }
         else
         {
-            if (face.quality > records[face.traceId].quality)
+            if (quality.p[0] > records[trace_id].quality)
             {
                 //质量更好才会更新，同VisionSeed内部逻辑
-                records[face.traceId].quality = face.quality;
-                if (records[face.traceId].name != face.name)
+                records[trace_id].quality = quality.p[0];
+                if (records[trace_id].name != faceName.p)
                 {
-                    printf("[%11s] [%d] '%s' -> '%s' (q:%6.3f, c:%6.3f)\n", "change", face.traceId, records[face.traceId].name.c_str(), face.name, face.quality, face.nameConfidence);
-                    records[face.traceId].name = face.name;
+                    printf("[%11s] [%d] '%s' -> '%s' (q:%6.3f, c:%6.3f)\n", "change", trace_id, records[trace_id].name.c_str(), faceName.p, quality.p[0], faceName.conf);
+                    records[trace_id].name = faceName.p;
                 }
             }
-            records[face.traceId].last_seen = ts;
+            records[trace_id].last_seen = ts;
         }
     }
 }
@@ -114,6 +139,6 @@ extern "C" void app_main()
 {
     visionseed = new YtVisionSeed("2~"); // uart 2, '~' means swap tx, rx pin
     //注册结果获取接口
-    visionseed->RegisterOnFaceResult(OnFaceRetrieveResult);
+    visionseed->RegisterOnResult(OnResult);
     visionseed->RegisterOnStatus(OnStatus);
 }

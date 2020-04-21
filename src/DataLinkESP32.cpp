@@ -85,8 +85,8 @@ int YtSerialPortESP32::open()
     // Configure UART parameters
     ESP_ERROR_CHECK(uart_param_config(mUart, &uart_config));
     // Set UART pins(TX: IO16 (UART2 default), RX: IO17 (UART2 default), RTS: IO18, CTS: IO19)
-    int modifyTx = UART_PIN_NO_CHANGE;
-    int modifyRx = UART_PIN_NO_CHANGE;
+    int modifyTx = GPIO_NUM_16;
+    int modifyRx = GPIO_NUM_17;
     if (mDev[0] == '2' && mDev[1] == '~')
     {
         modifyTx = GPIO_NUM_17;

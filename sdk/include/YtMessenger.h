@@ -50,7 +50,7 @@
 
 // Callback function types
 //typedef void (*PreviewCallback)(shared_ptr<YtMsg> message);
-typedef void (*OnResult)(shared_ptr<YtMsg> message);
+typedef void (*OnResultCallback)(shared_ptr<YtMsg> message);
 
 typedef void (*RpcCallback)(shared_ptr<YtMsg> message);
 
@@ -74,8 +74,8 @@ public:
     bool SendFile(std::string pathHost, std::string path, std::string auth="");
 
 //    void RegisterPreviewCallback(PreviewCallback callback);
-    void RegisterOnStatus(OnResult callback);
-    void RegisterOnFaceResult(OnResult callback);
+    void RegisterOnStatus(OnResultCallback callback);
+    void RegisterOnResult(OnResultCallback callback);
 //    bool WaitDownloadFaceLib();
 
     void startLoop();
@@ -86,8 +86,6 @@ protected:
     virtual void Update(int instanceId, shared_ptr<YtMsg> msg);
 
 private:
-    YtDataLinkPullPosix *pull;
-    YtDataLinkPushPosix *push;
 
     sem_t mMsgReadySem;
     sem_t mMsgProcessingSem;
@@ -106,8 +104,8 @@ private:
 //
 //    pb_byte_t * mBuffer = NULL;
 //
-    OnResult mFaceResultCallback;
-    OnResult mStatusCallback;
+    OnResultCallback mNGResultCallback;
+    OnResultCallback mStatusCallback;
 };
 
 #endif

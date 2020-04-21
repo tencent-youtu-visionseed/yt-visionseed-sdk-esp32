@@ -10,6 +10,7 @@ VisionSeed的开发团队觉得AI加上WiFi能够碰撞出有意思的火花，�
 
 本SDK基于ESP-IDF的新一代build系统，在以下版本中通过过测试
 Tested on ESP-IDF v3.2.2, xtensa-esp32-elf toolchain v5.2.0
+VisionSeed固件版本 V1.2.3（请通过官网的VisionSeed配置工具升级固件）
 
 # run example
 ```shell

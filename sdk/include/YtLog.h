@@ -21,9 +21,21 @@
 #define COLOR_CYAN_LIGHT "\033[36;1m"
 #define COLOR_NO "\033[0m"
 
+//#define NO_PRINT
 #if defined(YTMSG_FULL) || defined(YTMSG_LITE)
     #include <unistd.h>
+#ifndef STM32
     #define PRINTF printf
+#else
+	#ifdef __cplusplus
+	extern "C" {
+	#endif
+		void stm32printf(const char *fmt, ...);
+	#ifdef __cplusplus
+	}
+	#endif
+	#define PRINTF stm32printf
+#endif
     #define USLEEP(us) usleep(us)
 #else
     void vkprintf(const char *fmt, ...);
