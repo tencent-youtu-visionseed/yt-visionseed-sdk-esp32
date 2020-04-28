@@ -76,25 +76,29 @@ void OnResult(shared_ptr<YtMsg> message)
     for (int i = 0; i < count; i ++)
     {
         YtVisionSeedResultTypeRect rect;
-        YtVisionSeedResultTypeString faceName;
+        YtVisionSeedResultTypeString faceName = {.conf = 0, .p = 0};
         YtVisionSeedResultTypeArray quality;
         uint32_t trace_id;
 
+        // 获取检测框
         vs_path[1] = i;
         if (!YtDataLink::getResult(VSRESULT_DATAV2(message)->bytes, &rect, vs_path, 2))
         {
             continue;
         }
+        // 获取人脸识别结果
         vs_path[2] = VS_MODEL_FACE_RECOGNITION;
         if (!YtDataLink::getResult(VSRESULT_DATAV2(message)->bytes, &faceName, vs_path, 3))
         {
             continue;
         }
+        // 获取轨迹ID
         vs_path[2] = VS_MODEL_DETECTION_TRACE;
         if (!YtDataLink::getResult(VSRESULT_DATAV2(message)->bytes, &trace_id, vs_path, 3))
         {
             continue;
         }
+        // 获取人脸质量
         vs_path[2] = VS_MODEL_FACE_QUALITY;
         if (!YtDataLink::getResult(VSRESULT_DATAV2(message)->bytes, &quality, vs_path, 3))
         {
