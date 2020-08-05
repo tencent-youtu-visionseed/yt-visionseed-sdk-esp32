@@ -69,41 +69,37 @@ void OnStatus(shared_ptr<YtMsg> message)
 void OnResult(shared_ptr<YtMsg> message)
 {
     uint64_t ts = _time();
-    uint8_t vs_path[3] = {VS_MODEL_FACE_DETECTION};
     uint32_t count = 0;
-    YtDataLink::getResult(VSRESULT_DATAV2(message)->bytes, &count, vs_path, 1);
+    YtDataLink::getResult(VSRESULT_DATAV2(message)->bytes, &count, {VS_MODEL_FACE_DETECTION});
     // printf("frame: %" PRIu64 ", size: %d, count: %d, free: %d\n", VSRESULT(message).frameId, VSRESULT_DATAV2(message)->size, count, esp_get_free_heap_size());
     for (int i = 0; i < count; i ++)
     {
         YtVisionSeedResultTypeRect rect;
         YtVisionSeedResultTypeString faceName = {.conf = 0, .p = 0};
-        YtVisionSeedResultTypeArray quality;
+        YtVisionSeedResultTypeArray quality = {.count = 0, .p = 0};
         uint32_t trace_id;
 
-        // 获取检测框
-        vs_path[1] = i;
-        if (!YtDataLink::getResult(VSRESULT_DATAV2(message)->bytes, &rect, vs_path, 2))
+        // 获取检测框（模型ID路径：人脸检测/index）
+        if (!YtDataLink::getResult(VSRESULT_DATAV2(message)->bytes, &rect, {VS_MODEL_FACE_DETECTION, i}))
         {
             continue;
         }
-        // 获取人脸识别结果
-        vs_path[2] = VS_MODEL_FACE_RECOGNITION;
-        if (!YtDataLink::getResult(VSRESULT_DATAV2(message)->bytes, &faceName, vs_path, 3))
+        // 获取人脸识别结果（模型ID路径：人脸检测/index/人脸识别）
+        if (!YtDataLink::getResult(VSRESULT_DATAV2(message)->bytes, &faceName, {VS_MODEL_FACE_DETECTION, i, VS_MODEL_FACE_RECOGNITION}))
         {
             continue;
         }
-        // 获取轨迹ID
-        vs_path[2] = VS_MODEL_DETECTION_TRACE;
-        if (!YtDataLink::getResult(VSRESULT_DATAV2(message)->bytes, &trace_id, vs_path, 3))
+        // 获取轨迹ID（模型ID路径：人脸检测/index/轨迹）
+        if (!YtDataLink::getResult(VSRESULT_DATAV2(message)->bytes, &trace_id, {VS_MODEL_FACE_DETECTION, i, VS_MODEL_DETECTION_TRACE}))
         {
             continue;
         }
-        // 获取人脸质量
-        vs_path[2] = VS_MODEL_FACE_QUALITY;
-        if (!YtDataLink::getResult(VSRESULT_DATAV2(message)->bytes, &quality, vs_path, 3))
+        // 获取人脸质量（模型ID路径：人脸检测/index/人脸质量）
+        if (!YtDataLink::getResult(VSRESULT_DATAV2(message)->bytes, &trace_id, {VS_MODEL_FACE_DETECTION, i, VS_MODEL_FACE_QUALITY}))
         {
             continue;
         }
+
         // printf("--------------\n");
         // printf("[traceId] %d\n", trace_id);
         // printf("[faceName] %s conf: %6.3f\n", faceName.p, faceName.conf);
