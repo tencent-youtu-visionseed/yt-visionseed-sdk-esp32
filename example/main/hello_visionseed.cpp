@@ -95,7 +95,7 @@ void OnResult(shared_ptr<YtMsg> message)
             continue;
         }
         // 获取人脸质量（模型ID路径：人脸检测/index/人脸质量）
-        if (!YtDataLink::getResult(VSRESULT_DATAV2(message)->bytes, &trace_id, {VS_MODEL_FACE_DETECTION, i, VS_MODEL_FACE_QUALITY}))
+        if (!YtDataLink::getResult(VSRESULT_DATAV2(message)->bytes, &quality, {VS_MODEL_FACE_DETECTION, i, VS_MODEL_FACE_QUALITY}))
         {
             continue;
         }
